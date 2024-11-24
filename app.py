@@ -33,7 +33,6 @@ def recommend(movie):
 def download_file_from_google_drive(file_id, dest_path):
     """
     Downloads a file from Google Drive to a local destination.
-
     Args:
         file_id (str): The ID of the file to download from Google Drive.
         dest_path (str): The local file path to save the downloaded file.
@@ -42,13 +41,19 @@ def download_file_from_google_drive(file_id, dest_path):
     session = requests.Session()
 
     response = session.get(url, stream=True)
-    token = get_confirm_token(response)
+    if "text/html" in response.headers["Content-Type"]:  # Check if it's an HTML page
+        st.error("Failed to download file. Check file permissions or link validity.")
+        with open(dest_path, "w") as debug_file:
+            debug_file.write(response.text)  # Save the HTML response for debugging
+        return False
 
+    token = get_confirm_token(response)
     if token:
         params = {"confirm": token}
         response = session.get(url, params=params, stream=True)
 
     save_response_content(response, dest_path)
+    return True
 
 def get_confirm_token(response):
     """
@@ -64,7 +69,6 @@ def save_response_content(response, dest_path):
     Saves the content of the response to the specified file path.
     """
     CHUNK_SIZE = 32768
-
     with open(dest_path, "wb") as f:
         for chunk in response.iter_content(CHUNK_SIZE):
             if chunk:  # Filter out keep-alive new chunks
@@ -85,9 +89,16 @@ def load_files():
 
     # Download files if not present locally
     if not os.path.exists(movie_file_path):
-        download_file_from_google_drive(movie_file_id, movie_file_path)
+        success = download_file_from_google_drive(movie_file_id, movie_file_path)
+        if not success:
+            st.error("Failed to load movie_list.pkl. Check the logs.")
+            st.stop()
+
     if not os.path.exists(similarity_file_path):
-        download_file_from_google_drive(similarity_file_id, similarity_file_path)
+        success = download_file_from_google_drive(similarity_file_id, similarity_file_path)
+        if not success:
+            st.error("Failed to load similarity.pkl. Check the logs.")
+            st.stop()
 
     # Load the pickle files
     with open(movie_file_path, "rb") as f:
@@ -103,7 +114,6 @@ st.header("Movie Recommender System")
 
 # Load the files
 movies, similarity = load_files()
-
 
 
 movie_list = movies['title'].values
