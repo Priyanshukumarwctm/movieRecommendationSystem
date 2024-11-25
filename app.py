@@ -28,10 +28,22 @@ def recommend(movie):
 
 st.header('Movie Recommender System')
 movies = pickle.load(open('movie_list.pkl','rb'))
+
 # similarity = pickle.load(open('similarity.pkl','rb'))
 
-with gzip.open('similarity.pkl.gz', 'rb') as f:
-    similarity = pickle.load(f)
+# Number of parts
+num_parts = 8
+
+# Recombine the parts
+combined_data = []
+for i in range(1, num_parts + 1):
+    part_file = f'similarity_part{i}.pkl'
+    with open(part_file, 'rb') as part_f:
+        part_data = pickle.load(part_f)
+        combined_data.extend(part_data)  # Combine the lists or arrays
+
+# Use the recombined data
+similarity = combined_data
 
 
 movie_list = movies['title'].values
