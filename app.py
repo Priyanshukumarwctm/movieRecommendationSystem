@@ -1,7 +1,7 @@
 import pickle
 import requests
 import streamlit as st
-import requests
+import gzip
 import os
 
 def fetch_poster(movie_id):
@@ -26,94 +26,12 @@ def recommend(movie):
     return recommended_movie_names,recommended_movie_posters
 
 
-# st.header('Movie Recommender System')
-# movies = pickle.load(open('movie_list.pkl','rb'))
+st.header('Movie Recommender System')
+movies = pickle.load(open('movie_list.pkl','rb'))
 # similarity = pickle.load(open('similarity.pkl','rb'))
 
-def download_file_from_google_drive(file_id, dest_path):
-    """
-    Downloads a file from Google Drive to a local destination.
-    Args:
-        file_id (str): The ID of the file to download from Google Drive.
-        dest_path (str): The local file path to save the downloaded file.
-    """
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    session = requests.Session()
-
-    response = session.get(url, stream=True)
-    if "text/html" in response.headers["Content-Type"]:  # Check if it's an HTML page
-        st.error("Failed to download file. Check file permissions or link validity.")
-        with open(dest_path, "w") as debug_file:
-            debug_file.write(response.text)  # Save the HTML response for debugging
-        return False
-
-    token = get_confirm_token(response)
-    if token:
-        params = {"confirm": token}
-        response = session.get(url, params=params, stream=True)
-
-    save_response_content(response, dest_path)
-    return True
-
-def get_confirm_token(response):
-    """
-    Extracts the confirmation token from the response cookies if present.
-    """
-    for key, value in response.cookies.items():
-        if key.startswith("download_warning"):
-            return value
-    return None
-
-def save_response_content(response, dest_path):
-    """
-    Saves the content of the response to the specified file path.
-    """
-    CHUNK_SIZE = 32768
-    with open(dest_path, "wb") as f:
-        for chunk in response.iter_content(CHUNK_SIZE):
-            if chunk:  # Filter out keep-alive new chunks
-                f.write(chunk)
-
-@st.cache_data
-def load_files():
-    """
-    Loads the pickle files, downloading them from Google Drive if not present locally.
-    """
-    # Google Drive File IDs
-    movie_file_id = "1cDIb1bxVFJJkYX8FNxcC2Ufh5HcBOuKa"
-    similarity_file_id = "12yT7yyp24p0cnaeWKKr3sKpGVuSYx5kA"
-
-    # Local file paths
-    movie_file_path = "movie_list.pkl"
-    similarity_file_path = "similarity.pkl"
-
-    # Download files if not present locally
-    if not os.path.exists(movie_file_path):
-        success = download_file_from_google_drive(movie_file_id, movie_file_path)
-        if not success:
-            st.error("Failed to load movie_list.pkl. Check the logs.")
-            st.stop()
-
-    if not os.path.exists(similarity_file_path):
-        success = download_file_from_google_drive(similarity_file_id, similarity_file_path)
-        if not success:
-            st.error("Failed to load similarity.pkl. Check the logs.")
-            st.stop()
-
-    # Load the pickle files
-    with open(movie_file_path, "rb") as f:
-        movies = pickle.load(f)
-
-    with open(similarity_file_path, "rb") as f:
-        similarity = pickle.load(f)
-
-    return movies, similarity
-
-# Streamlit App
-st.header("Movie Recommender System")
-
-# Load the files
-movies, similarity = load_files()
+with gzip.open('similarity.pkl.gz', 'rb') as f:
+    similarity = pickle.load(f)
 
 
 movie_list = movies['title'].values
